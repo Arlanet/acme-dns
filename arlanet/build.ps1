@@ -1,0 +1,1 @@
+docker build -t arlanet/build-go:latest -f build.Dockerfile .

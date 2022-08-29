@@ -1,0 +1,17 @@
+name: acme-dns
+
+services:
+  acme-dns:
+    image: arlanet/acme-dns:latest
+    build:
+      dockerfile: Dockerfile
+    container_name: acme-dns
+    restart: always
+    ports:
+      - "443:443"
+      - "53:53"
+      - "53:53/udp"
+      - "80:80"
+    volumes:
+      - ./config:/etc/acme-dns:ro
+      - ./data:/var/lib/acme-dns
