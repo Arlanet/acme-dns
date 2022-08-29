@@ -4,6 +4,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"context"
 	"crypto/tls"
 	"flag"
@@ -11,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"syscall"
 
 	"github.com/caddyserver/certmagic"
 	legolog "github.com/go-acme/lego/v3/log"
@@ -22,8 +22,8 @@ import (
 
 func main() {
 	// Created files are not world writable
-	syscall.Umask(0077)
-	configPtr := flag.String("c", "/etc/acme-dns/config.cfg", "config file location")
+	//syscall.Umask(0077)
+	configPtr := flag.String("c", "./config.cfg", "config file location")
 	flag.Parse()
 	// Read global config
 	var err error
@@ -42,7 +42,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLogging(Config.Logconfig.Format, Config.Logconfig.Level)
+	if Config.Logconfig.Format == "none" {
+		log.SetOutput(ioutil.Discard)
+	} else {
+		setupLogging(Config.Logconfig.Format, Config.Logconfig.Level)
+	}
 
 	// Open database
 	newDB := new(acmedb)
@@ -124,10 +128,15 @@ func startHTTPAPI(errChan chan error, config DNSConfig, dnsservers []*DNSServer)
 		c.Log = stdlog.New(logwriter, "", 0)
 	}
 	if !Config.API.DisableRegistration {
-		api.POST("/register", webRegisterPost)
+		if Config.API.UseRegistrationAuthentication {
+			api.POST("/register", RegistrationAuth(webRegisterPost))
+		} else {
+			api.POST("/register", webRegisterPost)
+		}
 	}
 	api.POST("/update", Auth(webUpdatePost))
 	api.GET("/health", healthCheck)
+	api.GET("/", healthCheck)
 
 	host := Config.API.IP + ":" + Config.API.Port
 

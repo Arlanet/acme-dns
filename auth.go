@@ -91,3 +91,27 @@ func updateAllowedFromIP(r *http.Request, user ACMETxt) bool {
 	}
 	return user.allowedFrom(host)
 }
+
+func RegistrationAuth(registration httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		userOK := false
+
+		//Check if the username and password match
+		user := r.Header.Get("X-Api-User")
+		key := r.Header.Get("X-Api-Key")
+
+		if Config.API.RegistrationUser == user && Config.API.RegistrationKey == key {
+			userOK = true
+		}
+
+		//TODO: Check for IP
+
+		if userOK {
+			registration(w, r, p)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write(jsonError("forbidden"))
+		}
+	}
+}
